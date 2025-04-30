@@ -86,7 +86,15 @@ void BPlusTreeLeaf::delete_record(const BPlusTreeRecord& record) {
   if (record_count == 0) {
     return;
   }
-  // TODO: Bonus
+  auto index = search_index(record);
+  if (index >= record_count || get_record(index) != record) {
+    return;
+  }
+  // Move all records after index to the left
+  for (int i = index; i < record_count - 1; ++i) {
+    set_record(i, get_record(i + 1));
+  }
+  set_record_count(record_count - 1);
 }
 
 int32_t BPlusTreeLeaf::get_record_count() const {

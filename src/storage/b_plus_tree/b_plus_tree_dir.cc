@@ -82,6 +82,16 @@ int32_t BPlusTreeDir::search_child_idx(const BPlusTreeRecord& record) {
 
 void BPlusTreeDir::delete_record(const BPlusTreeRecord& record) {
   // TODO: Bonus
+  auto index = search_child_idx(record);
+  auto child_page_number = get_child(index);
+  
+  if (child_page_number < 0) { // negative number: pointer to dir
+    BPlusTreeDir child(bpt, -1 * child_page_number);
+    child.delete_record(record);
+  } else { // positive number: pointer to leaf
+    BPlusTreeLeaf child(bpt, child_page_number);
+    child.delete_record(record);
+  }
 }
 
 std::unique_ptr<BPlusTreeSplit> BPlusTreeDir::insert_record(const BPlusTreeRecord& record) {
