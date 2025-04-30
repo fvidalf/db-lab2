@@ -131,30 +131,29 @@ std::unique_ptr<BPlusTreeSplit> BPlusTreeDir::insert_record(const BPlusTreeRecor
     }
     // Case 2: we need to split this node and this node is not the root
     else if (page.get_page_number() != 0) {
-      // TODO: Problema 
-      // Define a vector of records
-      auto records = std::vector<BPlusTreeRecord>(record_count + 1);
-      records[split_child_idx] = split->record;
-      // Copy all records from the page
-      for (int i = 0; i < record_count; ++i) {
-        if (i < split_child_idx) {
-          records[i] = get_record(i);
-        } else {
-          records[i + 1] = get_record(i);
-        }
+      // Define vectors to hold records and children
+      std::vector<BPlusTreeRecord> records;
+      records.reserve(record_count + 1);
+      
+      std::vector<int32_t> children;
+      children.reserve(child_count + 1);
+      
+      for (int i = 0; i < split_child_idx; ++i) {
+        records.push_back(get_record(i));
+        children.push_back(get_child(i));
       }
 
-      // Define a vector of children (pointers)
-      auto children = std::vector<int32_t>(child_count + 1);
-      children[split_child_idx] = split->encoded_page_number;
-      // Copy all children from the page
-      for (int i = 0; i < child_count; ++i) {
-        if (i < split_child_idx) {
-          children[i] = get_child(i);
-        } else {
-          children[i + 1] = get_child(i);
-        }
+      records.push_back(split->record);
+      children.push_back(get_child(split_child_idx));
+      children.push_back(split->encoded_page_number);
+      
+      for (int i = split_child_idx; i < record_count; ++i) {
+        records.push_back(get_record(i));
       }
+      for (int i = split_child_idx + 1; i < child_count; ++i) {
+        children.push_back(get_child(i));
+      }
+
       // Create a new dir page
       auto new_dir = std::make_unique<BPlusTreeDir>(bpt);
       auto new_page_number = new_dir->page.get_page_number();
@@ -171,8 +170,6 @@ std::unique_ptr<BPlusTreeSplit> BPlusTreeDir::insert_record(const BPlusTreeRecor
       set_child_count(middle + 1);
 
       // New page gets middle+1 to end (child) pointers and middle+1 to end (record) records
-      // record count is child count - 1
-
       for (int i = middle + 1; i < record_count + 1; ++i) {
         new_dir->set_record(i - middle - 1, records[i]);
       }

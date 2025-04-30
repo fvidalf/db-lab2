@@ -40,19 +40,20 @@ std::unique_ptr<BPlusTreeSplit> BPlusTreeLeaf::insert_record(const BPlusTreeReco
     set_record_count(record_count + 1);
     return nullptr;
   } else {
-    // TODO: Problema 2
-    // Create a vector of records
-    auto records = std::vector<BPlusTreeRecord>(record_count + 1);
+    // Create a vector to hold records
+    std::vector<BPlusTreeRecord> records;
+    records.reserve(record_count + 1);
 
-    records[index] = record;
-    // Copy all records from the page
-    for (int i = 0; i < record_count; ++i) {
-      if (i < index) {
-        records[i] = get_record(i);
-      } else {
-        records[i + 1] = get_record(i);
-      }
+    for (int i = 0; i < index; ++i) {
+      records.push_back(get_record(i));
     }
+    
+    records.push_back(record);
+    
+    for (int i = index; i < record_count; ++i) {
+      records.push_back(get_record(i));
+    }
+    
     // Create a new leaf page
     auto new_leaf = std::make_unique<BPlusTreeLeaf>(bpt);
     auto new_page_number = new_leaf->page.get_page_number();
@@ -87,9 +88,17 @@ void BPlusTreeLeaf::delete_record(const BPlusTreeRecord& record) {
     return;
   }
   auto index = search_index(record);
-  if (index >= record_count || get_record(index) != record) {
+  if (index >= record_count) {
     return;
   }
+
+  auto candidate = get_record(index);
+  if (candidate.encoded_key  != record.encoded_key ||
+    candidate.rid.page_num  != record.rid.page_num ||
+    candidate.rid.dir_slot  != record.rid.dir_slot) {
+  return;
+}
+
   // Move all records after index to the left
   for (int i = index; i < record_count - 1; ++i) {
     set_record(i, get_record(i + 1));
