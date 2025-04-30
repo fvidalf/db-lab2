@@ -32,8 +32,52 @@ std::unique_ptr<BPlusTreeSplit> BPlusTreeLeaf::insert_record(const BPlusTreeReco
 
   if (record_count < max_records) {
     // TODO: Problema 1
+    // Displace all records from index to the right
+    for (int i = record_count; i > index; --i) {
+      set_record(i, get_record(i - 1));
+    }
+    set_record(index, record);
+    set_record_count(record_count + 1);
+    return nullptr;
   } else {
     // TODO: Problema 2
+    // Create a vector of records
+    auto records = std::vector<BPlusTreeRecord>(record_count + 1);
+
+    records[index] = record;
+    // Copy all records from the page
+    for (int i = 0; i < record_count; ++i) {
+      if (i < index) {
+        records[i] = get_record(i);
+      } else {
+        records[i + 1] = get_record(i);
+      }
+    }
+    // Create a new leaf page
+    auto new_leaf = std::make_unique<BPlusTreeLeaf>(bpt);
+    auto new_page_number = new_leaf->page.get_page_number();
+    auto middle = (max_records + 1) / 2;
+    auto original_page_next_page_number = get_next_page_number();
+
+    // Populate first half of the records (left page)
+    for (int i = 0; i < middle; ++i) {
+      set_record(i, records[i]);
+    }
+    set_record_count(middle);
+    set_next_page_number(new_page_number);
+
+    // Populate second half of the records (right page)
+    for (int i = middle; i < record_count + 1; ++i) {
+      new_leaf->set_record(i - middle, records[i]);
+    }
+    new_leaf->set_record_count((max_records / 2) + 1);
+    new_leaf->set_next_page_number(original_page_next_page_number);
+
+    auto split_record = new_leaf->get_record(0);
+    auto split_page_number = new_leaf->page.get_page_number();
+
+    auto bplus_tree_split = std::make_unique<BPlusTreeSplit>(split_record, split_page_number);
+    return bplus_tree_split;
   }
 }
 
